@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ZTuERAy8Y9PVE4zIPtGOFBTy8Xq1xc0V1b6nA1D652Y='; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uber Realms — Amazon Ads Authorization</title>
+</head>
+<body>
+<h1>Amazon Ads — nhận mã cấp quyền</h1>
+<p id="status">Đang kiểm tra kết quả từ Amazon…</p>
+<section id="result" hidden>
+<p>Sao chép URL dưới đây, quay lại tab công cụ local và dán vào ô Callback URL. Thực hiện ngay vì mã có thời hạn ngắn.</p>
+<label for="callback">Callback URL</label><br>
+<textarea id="callback" readonly rows="6" cols="65" autocomplete="off" spellcheck="false"></textarea><br>
+<button id="copy" type="button">Sao chép URL</button>
+<button id="clear" type="button">Xóa khỏi trang</button>
+<p id="notice" role="status"></p>
+<p>Trang này không đổi token, không cần client secret và không gửi URL sang server local. Không gửi URL này vào chat hoặc cho người khác.</p>
+</section>
+<noscript>Bật JavaScript để nhận URL callback và xóa mã khỏi thanh địa chỉ.</noscript>
+<script>
+(() => {
+  'use strict';
+  const callbackUrl = new URL(window.location.href);
+  window.history.replaceState(null, '', window.location.pathname);
+  const status = document.getElementById('status');
+  const output = document.getElementById('callback');
+  const notice = document.getElementById('notice');
+  const params = callbackUrl.searchParams;
+  if (params.has('error')) {
+    status.textContent = 'Amazon chưa cấp quyền. Quay lại công cụ local và bắt đầu lại.';
+    return;
+  }
+  if (params.getAll('state').length !== 1 || !/^[A-Za-z0-9_-]{43}$/.test(params.get('state') || '') || params.getAll('code').length !== 1 || !params.get('code') || params.get('code').length > 4096) {
+    status.textContent = 'Chưa có mã cấp quyền hợp lệ. Hãy bắt đầu từ công cụ local, không tự tạo URL cấp quyền.';
+    return;
+  }
+  // Allowlist only OAuth parameters. No network, storage, HTML injection or third-party scripts.
+  const safeUrl = new URL(window.location.origin + window.location.pathname);
+  safeUrl.search = new URLSearchParams({ state: params.get('state'), code: params.get('code') }).toString();
+  output.value = safeUrl.toString();
+  status.textContent = 'Đã nhận authorization code. Công cụ local sẽ kiểm tra state và PKCE trước khi đổi token.';
+  document.getElementById('result').hidden = false;
+  document.getElementById('copy').addEventListener('click', async () => {
+    if (!output.value) return;
+    try { await navigator.clipboard.writeText(output.value); notice.textContent = 'Đã sao chép. Dán vào công cụ local ngay.'; }
+    catch { output.focus(); output.select(); notice.textContent = 'Hãy nhấn Ctrl+C hoặc Command+C để sao chép.'; }
+  });
+  document.getElementById('clear').addEventListener('click', () => {
+    output.value = ''; document.getElementById('result').hidden = true;
+    status.textContent = 'Đã xóa mã khỏi nội dung trang. Có thể đóng tab này.';
+  });
+})();
+</script>
+</body>
+</html>
